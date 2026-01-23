@@ -45,9 +45,10 @@ pub struct BookMetadata {
     pub tags: Option<String>,        // JSON array as string
     pub book_meta: Option<String>,   // JSON array as string
     pub author_meta: Option<String>, // JSON array as string
+    pub in_corpus: Option<bool>,     // Whether book is in the corpus
 }
 
-const BOOK_COLUMNS: &str = "id, corpus, title, author_id, death_ah, century_ah, genre_id, page_count, token_count, original_id, paginated, tags, book_meta, author_meta";
+const BOOK_COLUMNS: &str = "id, corpus, title, author_id, death_ah, century_ah, genre_id, page_count, token_count, original_id, paginated, tags, book_meta, author_meta, in_corpus";
 
 fn row_to_book(row: &Row) -> rusqlite::Result<BookMetadata> {
     Ok(BookMetadata {
@@ -65,6 +66,7 @@ fn row_to_book(row: &Row) -> rusqlite::Result<BookMetadata> {
         tags: row.get(11)?,
         book_meta: row.get(12)?,
         author_meta: row.get(13)?,
+        in_corpus: row.get::<_, Option<i64>>(14)?.map(|v| v != 0),
     })
 }
 
@@ -140,7 +142,7 @@ pub fn get_all_books(
 ) -> Result<Vec<BookMetadata>, KashshafError> {
     let app_state = require_state(&state)?;
     let conn = app_state
-        .get_db_connection()
+        .get_metadata_db_connection()
         .map_err(|e: anyhow::Error| KashshafError::Database(e.to_string()))?;
 
     let mut stmt = conn
@@ -170,7 +172,7 @@ pub fn list_books(
 ) -> Result<Vec<BookMetadata>, KashshafError> {
     let app_state = require_state(&state)?;
     let conn = app_state
-        .get_db_connection()
+        .get_metadata_db_connection()
         .map_err(|e: anyhow::Error| KashshafError::Database(e.to_string()))?;
     let limit = limit.unwrap_or(100);
     let offset = offset.unwrap_or(0);
@@ -222,7 +224,7 @@ pub fn list_books_filtered(
 ) -> Result<Vec<BookMetadata>, KashshafError> {
     let app_state = require_state(&state)?;
     let conn = app_state
-        .get_db_connection()
+        .get_metadata_db_connection()
         .map_err(|e: anyhow::Error| KashshafError::Database(e.to_string()))?;
     let limit = limit.unwrap_or(10000);
     let offset = offset.unwrap_or(0);
@@ -294,7 +296,7 @@ pub fn search_authors(
     }
 
     let conn = app_state
-        .get_db_connection()
+        .get_metadata_db_connection()
         .map_err(|e: anyhow::Error| KashshafError::Database(e.to_string()))?;
 
     // Join authors with books to get death_ah and book_count
@@ -338,7 +340,7 @@ pub fn get_book(
 ) -> Result<Option<BookMetadata>, KashshafError> {
     let app_state = require_state(&state)?;
     let conn = app_state
-        .get_db_connection()
+        .get_metadata_db_connection()
         .map_err(|e: anyhow::Error| KashshafError::Database(e.to_string()))?;
 
     let mut stmt = conn
@@ -357,7 +359,7 @@ pub fn get_book(
 pub fn get_genres(state: State<'_, ManagedAppState>) -> Result<Vec<(i64, String)>, KashshafError> {
     let app_state = require_state(&state)?;
     let conn = app_state
-        .get_db_connection()
+        .get_metadata_db_connection()
         .map_err(|e: anyhow::Error| KashshafError::Database(e.to_string()))?;
 
     let mut stmt = conn
@@ -379,7 +381,7 @@ pub fn get_genres(state: State<'_, ManagedAppState>) -> Result<Vec<(i64, String)
 pub fn get_authors(state: State<'_, ManagedAppState>) -> Result<Vec<(i64, String)>, KashshafError> {
     let app_state = require_state(&state)?;
     let conn = app_state
-        .get_db_connection()
+        .get_metadata_db_connection()
         .map_err(|e: anyhow::Error| KashshafError::Database(e.to_string()))?;
 
     let mut stmt = conn
@@ -401,7 +403,7 @@ pub fn get_authors(state: State<'_, ManagedAppState>) -> Result<Vec<(i64, String
 pub fn get_centuries(state: State<'_, ManagedAppState>) -> Result<Vec<(i64, i64)>, KashshafError> {
     let app_state = require_state(&state)?;
     let conn = app_state
-        .get_db_connection()
+        .get_metadata_db_connection()
         .map_err(|e: anyhow::Error| KashshafError::Database(e.to_string()))?;
 
     let mut stmt = conn
@@ -428,7 +430,7 @@ pub fn get_stats(state: State<'_, ManagedAppState>) -> Result<serde_json::Value,
         .map_err(|e: anyhow::Error| KashshafError::Index(e.to_string()))?;
 
     let conn = app_state
-        .get_db_connection()
+        .get_metadata_db_connection()
         .map_err(|e: anyhow::Error| KashshafError::Database(e.to_string()))?;
     let book_count: i64 = conn
         .query_row("SELECT COUNT(*) FROM books", [], |row: &Row| row.get(0))

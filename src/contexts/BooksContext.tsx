@@ -48,8 +48,10 @@ export function BooksProvider({ children, api }: BooksProviderProps) {
         api.getAuthors(),
         api.getGenres(),
       ]);
-      console.log(`[BooksContext] Loaded ${booksData.length} books, ${authorsData.length} authors, ${genresData.length} genres`);
-      setBooks(booksData);
+      // Filter to only show books that are in the corpus (in_corpus = 1)
+      const inCorpusBooks = booksData.filter(book => book.in_corpus !== false && book.in_corpus != null);
+      console.log(`[BooksContext] Loaded ${booksData.length} total books (${inCorpusBooks.length} in corpus), ${authorsData.length} authors, ${genresData.length} genres`);
+      setBooks(inCorpusBooks);
       setAuthors(authorsData);
       setGenres(genresData);
       setError(null);

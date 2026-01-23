@@ -63,7 +63,7 @@ export interface Token {
   clitics: TokenClitic[];
 }
 
-// Book metadata types (from corpus.db)
+// Book metadata types (from metadata.db)
 export interface BookMetadata {
   id: number;
   corpus?: string;
@@ -79,6 +79,7 @@ export interface BookMetadata {
   tags?: string;       // JSON array as string
   book_meta?: string;  // JSON array as string
   author_meta?: string; // JSON array as string
+  in_corpus?: boolean; // Whether book is in the corpus
 }
 
 // Author lookup table

@@ -15,6 +15,7 @@ pub struct AppState {
     pub search_engine: Arc<SearchEngine>,
     pub token_cache: Arc<TokenCache>,
     pub db_path: PathBuf,
+    pub metadata_db_path: PathBuf,
     pub settings_db_path: PathBuf,
     pub data_dir: PathBuf,
 }
@@ -24,6 +25,7 @@ impl AppState {
     pub fn new(data_dir: PathBuf) -> Result<Self> {
         let index_path = data_dir.join("tantivy_index");
         let db_path = data_dir.join("corpus.db");
+        let metadata_db_path = data_dir.join("metadata.db");
 
         // Settings database is stored in app data directory, not corpus data
         // This allows settings to persist across corpus updates
@@ -41,6 +43,7 @@ impl AppState {
             search_engine,
             token_cache,
             db_path,
+            metadata_db_path,
             settings_db_path,
             data_dir,
         })
@@ -49,6 +52,11 @@ impl AppState {
     /// Get a new database connection (each call creates a new connection)
     pub fn get_db_connection(&self) -> Result<rusqlite::Connection> {
         Ok(rusqlite::Connection::open(&self.db_path)?)
+    }
+
+    /// Get a new metadata database connection
+    pub fn get_metadata_db_connection(&self) -> Result<rusqlite::Connection> {
+        Ok(rusqlite::Connection::open(&self.metadata_db_path)?)
     }
 
     /// Get a new settings database connection
