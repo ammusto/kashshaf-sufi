@@ -21,6 +21,7 @@ struct AppState {
     search_engine: SearchEngine,
     token_cache: TokenCache,
     db_path: PathBuf,
+    metadata_db_path: PathBuf,
 }
 
 // === Request/Response types ===
@@ -144,6 +145,7 @@ struct BookMetadata {
     tags: Option<String>,
     book_meta: Option<String>,
     author_meta: Option<String>,
+    in_corpus: Option<bool>,
 }
 
 #[derive(Serialize)]
@@ -309,12 +311,12 @@ async fn get_name_match_positions(
 async fn get_all_books(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<BookMetadata>>, (StatusCode, Json<ErrorResponse>)> {
-    let conn = rusqlite::Connection::open(&state.db_path)
+    let conn = rusqlite::Connection::open(&state.metadata_db_path)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e.to_string() })))?;
 
     let mut stmt = conn.prepare(
         "SELECT id, corpus, title, author_id, death_ah, century_ah, genre_id, page_count, token_count,
-                original_id, paginated, tags, book_meta, author_meta
+                original_id, paginated, tags, book_meta, author_meta, in_corpus
          FROM books ORDER BY death_ah ASC NULLS LAST, id ASC"
     ).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e.to_string() })))?;
 
@@ -334,6 +336,7 @@ async fn get_all_books(
             tags: row.get(11)?,
             book_meta: row.get(12)?,
             author_meta: row.get(13)?,
+            in_corpus: row.get::<_, Option<i64>>(14)?.map(|v| v != 0),
         })
     }).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e.to_string() })))?
         .filter_map(|r| r.ok())
@@ -345,7 +348,7 @@ async fn get_all_books(
 async fn get_all_authors(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<(i64, String)>>, (StatusCode, Json<ErrorResponse>)> {
-    let conn = rusqlite::Connection::open(&state.db_path)
+    let conn = rusqlite::Connection::open(&state.metadata_db_path)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e.to_string() })))?;
 
     let mut stmt = conn.prepare("SELECT id, author FROM authors ORDER BY id")
@@ -363,7 +366,7 @@ async fn get_all_authors(
 async fn get_all_genres(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<(i64, String)>>, (StatusCode, Json<ErrorResponse>)> {
-    let conn = rusqlite::Connection::open(&state.db_path)
+    let conn = rusqlite::Connection::open(&state.metadata_db_path)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e.to_string() })))?;
 
     let mut stmt = conn.prepare("SELECT id, genre FROM genres ORDER BY id")
@@ -384,6 +387,7 @@ async fn main() -> anyhow::Result<()> {
 
     let index_path = PathBuf::from("/opt/kashshaf/data/tantivy_index");
     let db_path = PathBuf::from("/opt/kashshaf/data/corpus.db");
+    let metadata_db_path = PathBuf::from("/opt/kashshaf/data/metadata.db");
 
     let search_engine = SearchEngine::open(&index_path)?;
     let token_cache = TokenCache::new(db_path.clone(), 1000);
@@ -392,6 +396,7 @@ async fn main() -> anyhow::Result<()> {
         search_engine,
         token_cache,
         db_path,
+        metadata_db_path,
     });
 
     let cors = CorsLayer::new()
