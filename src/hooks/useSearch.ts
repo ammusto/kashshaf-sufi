@@ -4,6 +4,7 @@ import type { SearchContext, AppSearchMode, CombinedSearchQuery, ProximitySearch
 import type { NameFormData } from '../utils/namePatterns';
 import type { SearchAPI, NameSearchForm as NameSearchFormAPI } from '../api';
 import { PAGE_SIZE, MAX_RESULTS, EXPORT_MAX_RESULTS } from '../constants/search';
+import { ALLOWED_BOOK_IDS } from '../constants/corpus';
 import { addToHistory } from '../utils/storage';
 import { useSearchTabsContext } from '../contexts/SearchTabsContext';
 import { generateSearchPatterns, generateDisplayPatterns } from '../utils/namePatterns';
@@ -104,9 +105,10 @@ export function useSearch(options: UseSearchOptions): UseSearchReturn {
 
   // Helper to get filters from selectedBookIds
   const getFilters = useCallback((): SearchFilters => {
-    return selectedBookIds.size > 0
-      ? { book_ids: Array.from(selectedBookIds) }
-      : {};
+    const bookIds = selectedBookIds.size > 0
+      ? Array.from(selectedBookIds)
+      : Array.from(ALLOWED_BOOK_IDS);
+    return { book_ids: bookIds };
   }, [selectedBookIds]);
 
   // Add search to history (fire and forget)

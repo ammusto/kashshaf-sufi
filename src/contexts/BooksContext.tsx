@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useMemo, ReactNode, useCallback } from 'react';
 import type { BookMetadata } from '../types';
 import type { SearchAPI } from '../api';
+import { ALLOWED_BOOK_IDS } from '../constants/corpus';
 
 interface BooksContextValue {
   /** All books loaded at startup */
@@ -48,12 +49,21 @@ export function BooksProvider({ children, api }: BooksProviderProps) {
         api.getAuthors(),
         api.getGenres(),
       ]);
-      // Filter to only show books that are in the corpus (in_corpus = 1)
-      const inCorpusBooks = booksData.filter(book => book.in_corpus !== false && book.in_corpus != null);
-      console.log(`[BooksContext] Loaded ${booksData.length} total books (${inCorpusBooks.length} in corpus), ${authorsData.length} authors, ${genresData.length} genres`);
-      setBooks(inCorpusBooks);
-      setAuthors(authorsData);
-      setGenres(genresData);
+      // Filter to only books in the allowed Sufi corpus subset
+      const allowedBooks = booksData.filter(book =>
+        ALLOWED_BOOK_IDS.has(book.id) && book.in_corpus !== false && book.in_corpus != null
+      );
+
+      // Derive allowed authors and genres from the filtered books
+      const usedAuthorIds = new Set(allowedBooks.map(b => b.author_id).filter((id): id is number => id !== undefined));
+      const usedGenreIds = new Set(allowedBooks.map(b => b.genre_id).filter((id): id is number => id !== undefined));
+      const filteredAuthors = authorsData.filter(([id]) => usedAuthorIds.has(id));
+      const filteredGenres = genresData.filter(([id]) => usedGenreIds.has(id));
+
+      console.log(`[BooksContext] Loaded ${booksData.length} total books, filtered to ${allowedBooks.length} allowed books, ${filteredAuthors.length} authors, ${filteredGenres.length} genres`);
+      setBooks(allowedBooks);
+      setAuthors(filteredAuthors);
+      setGenres(filteredGenres);
       setError(null);
     } catch (err) {
       console.error('[BooksContext] Failed to load books:', err);
