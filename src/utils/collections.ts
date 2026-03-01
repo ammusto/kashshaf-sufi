@@ -1,23 +1,18 @@
 /**
  * Collections Storage Layer
  *
- * Provides unified storage API for collections that works for both web and desktop:
- * - Web: Uses localStorage
- * - Desktop: Uses Tauri commands (SQLite)
+ * Uses localStorage for collections storage (web-only).
  */
 
 import type { Collection, CollectionEntry } from '../types/collections';
 import { parseCollectionEntry } from '../types/collections';
-
-// Check if we're in web mode
-const isWebTarget = import.meta.env.VITE_TARGET === 'web';
 
 // ============ LocalStorage Keys ============
 const STORAGE_KEY = 'kashshaf_collections';
 
 let collectionIdCounter = Date.now();
 
-// ============ Web Storage Implementation ============
+// ============ Internal Helpers ============
 
 function getStoredCollections(): CollectionEntry[] {
   try {
@@ -38,9 +33,9 @@ function setStoredCollections(entries: CollectionEntry[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
 }
 
-// ============ Web Functions ============
+// ============ Public API ============
 
-async function webCreateCollection(
+export async function createCollection(
   name: string,
   bookIds: number[],
   description?: string
@@ -70,12 +65,12 @@ async function webCreateCollection(
   return parseCollectionEntry(newEntry);
 }
 
-async function webGetCollections(): Promise<Collection[]> {
+export async function getCollections(): Promise<Collection[]> {
   const entries = getStoredCollections();
   return entries.map(parseCollectionEntry);
 }
 
-async function webUpdateCollectionBooks(id: number, bookIds: number[]): Promise<void> {
+export async function updateCollectionBooks(id: number, bookIds: number[]): Promise<void> {
   const entries = getStoredCollections();
   const index = entries.findIndex(e => e.id === id);
 
@@ -88,7 +83,7 @@ async function webUpdateCollectionBooks(id: number, bookIds: number[]): Promise<
   setStoredCollections(entries);
 }
 
-async function webUpdateCollectionDescription(id: number, description: string | null): Promise<void> {
+export async function updateCollectionDescription(id: number, description: string | null): Promise<void> {
   const entries = getStoredCollections();
   const index = entries.findIndex(e => e.id === id);
 
@@ -101,7 +96,7 @@ async function webUpdateCollectionDescription(id: number, description: string | 
   setStoredCollections(entries);
 }
 
-async function webRenameCollection(id: number, name: string): Promise<void> {
+export async function renameCollection(id: number, name: string): Promise<void> {
   const entries = getStoredCollections();
   const index = entries.findIndex(e => e.id === id);
 
@@ -119,73 +114,8 @@ async function webRenameCollection(id: number, name: string): Promise<void> {
   setStoredCollections(entries);
 }
 
-async function webDeleteCollection(id: number): Promise<void> {
+export async function deleteCollection(id: number): Promise<void> {
   const entries = getStoredCollections();
   const filtered = entries.filter(e => e.id !== id);
   setStoredCollections(filtered);
-}
-
-// ============ Desktop Storage (Tauri) ============
-
-let desktopTauri: typeof import('../api/tauri') | null = null;
-
-async function getDesktopTauri() {
-  if (!desktopTauri && !isWebTarget) {
-    desktopTauri = await import('../api/tauri');
-  }
-  return desktopTauri;
-}
-
-// ============ Unified API ============
-
-export async function createCollection(
-  name: string,
-  bookIds: number[],
-  description?: string
-): Promise<Collection> {
-  if (isWebTarget) {
-    return webCreateCollection(name, bookIds, description);
-  }
-  const tauri = await getDesktopTauri();
-  return tauri!.createCollection(name, bookIds, description);
-}
-
-export async function getCollections(): Promise<Collection[]> {
-  if (isWebTarget) {
-    return webGetCollections();
-  }
-  const tauri = await getDesktopTauri();
-  return tauri!.getCollections();
-}
-
-export async function updateCollectionBooks(id: number, bookIds: number[]): Promise<void> {
-  if (isWebTarget) {
-    return webUpdateCollectionBooks(id, bookIds);
-  }
-  const tauri = await getDesktopTauri();
-  return tauri!.updateCollectionBooks(id, bookIds);
-}
-
-export async function updateCollectionDescription(id: number, description: string | null): Promise<void> {
-  if (isWebTarget) {
-    return webUpdateCollectionDescription(id, description);
-  }
-  const tauri = await getDesktopTauri();
-  return tauri!.updateCollectionDescription(id, description);
-}
-
-export async function renameCollection(id: number, name: string): Promise<void> {
-  if (isWebTarget) {
-    return webRenameCollection(id, name);
-  }
-  const tauri = await getDesktopTauri();
-  return tauri!.renameCollection(id, name);
-}
-
-export async function deleteCollection(id: number): Promise<void> {
-  if (isWebTarget) {
-    return webDeleteCollection(id);
-  }
-  const tauri = await getDesktopTauri();
-  return tauri!.deleteCollection(id);
 }

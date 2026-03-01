@@ -63,7 +63,7 @@ export interface Token {
   clitics: TokenClitic[];
 }
 
-// Book metadata types (from metadata.db)
+// Book metadata types (from metadata_sufi.db)
 export interface BookMetadata {
   id: number;
   corpus?: string;

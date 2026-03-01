@@ -6,5 +6,4 @@ export { CollectionsModal } from './CollectionsModal';
 export { SaveCollectionModal } from './SaveCollectionModal';
 export { BooksModal } from './BooksModal';
 export { MetadataBrowser } from './MetadataBrowser';
-export { DownloadModal } from './DownloadModal';
 export { AnnouncementsModal } from './AnnouncementsModal';

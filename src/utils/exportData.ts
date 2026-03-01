@@ -1,6 +1,5 @@
 import * as XLSX from 'xlsx';
 import type { BookMetadata, SearchResult } from '../types';
-import { isWebTarget } from './platform';
 
 // BOM for UTF-8 Excel compatibility with Arabic
 const UTF8_BOM = '\uFEFF';
@@ -244,63 +243,25 @@ function downloadInBrowser(content: string | Uint8Array, fileName: string, mimeT
 }
 
 /**
- * Show save dialog and export CSV data
+ * Export CSV data via browser download
  */
 async function exportCSVWithDialog(
   content: string,
   defaultFileName: string
 ): Promise<boolean> {
-  if (isWebTarget()) {
-    // Web: trigger browser download
-    downloadInBrowser(content, defaultFileName, 'text/csv;charset=utf-8;');
-    return true;
-  }
-
-  // Desktop: use Tauri dialog
-  const { save } = await import('@tauri-apps/plugin-dialog');
-  const { writeTextFile } = await import('@tauri-apps/plugin-fs');
-
-  const filePath = await save({
-    filters: [{ name: 'CSV', extensions: ['csv'] }],
-    defaultPath: defaultFileName,
-  });
-
-  if (filePath) {
-    await writeTextFile(filePath, content);
-    return true;
-  }
-
-  return false;
+  downloadInBrowser(content, defaultFileName, 'text/csv;charset=utf-8;');
+  return true;
 }
 
 /**
- * Show save dialog and export XLSX data
+ * Export XLSX data via browser download
  */
 async function exportXLSXWithDialog(
   data: Uint8Array,
   defaultFileName: string
 ): Promise<boolean> {
-  if (isWebTarget()) {
-    // Web: trigger browser download
-    downloadInBrowser(data, defaultFileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    return true;
-  }
-
-  // Desktop: use Tauri dialog
-  const { save } = await import('@tauri-apps/plugin-dialog');
-  const { writeFile } = await import('@tauri-apps/plugin-fs');
-
-  const filePath = await save({
-    filters: [{ name: 'Excel Workbook', extensions: ['xlsx'] }],
-    defaultPath: defaultFileName,
-  });
-
-  if (filePath) {
-    await writeFile(filePath, data);
-    return true;
-  }
-
-  return false;
+  downloadInBrowser(data, defaultFileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  return true;
 }
 
 /**

@@ -387,7 +387,7 @@ async fn main() -> anyhow::Result<()> {
 
     let index_path = PathBuf::from("/opt/kashshaf/data/tantivy_index");
     let db_path = PathBuf::from("/opt/kashshaf/data/corpus.db");
-    let metadata_db_path = PathBuf::from("/opt/kashshaf/data/metadata.db");
+    let metadata_db_path = PathBuf::from("/opt/kashshaf/data/metadata_sufi.db");
 
     let search_engine = SearchEngine::open(&index_path)?;
     let token_cache = TokenCache::new(db_path.clone(), 1000);

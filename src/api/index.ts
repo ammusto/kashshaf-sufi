@@ -13,7 +13,12 @@ import type {
   SearchResult,
   Token,
 } from '../types';
-import type { NameSearchForm } from './tauri';
+/**
+ * Name search form - search for Arabic personal names using pattern matching
+ */
+export interface NameSearchForm {
+  patterns: string[];  // All generated patterns for this name (after proclitic expansion)
+}
 
 /**
  * Operating mode for the application
@@ -45,7 +50,7 @@ export interface CombinedSearchQuery {
 
 /**
  * Unified Search API interface
- * Both offline (Tauri) and online (HTTP) implementations use this interface
+ * Unified Search API interface for online HTTP access
  */
 export interface SearchAPI {
   // Search operations
@@ -130,5 +135,3 @@ export interface SearchAPI {
   getGenres(): Promise<[number, string][]>;
 }
 
-// Re-export for convenience
-export type { NameSearchForm };

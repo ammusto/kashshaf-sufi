@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
-import type { BookMetadata } from '../../types';
-import { listBooks } from '../../api/tauri';
+import { useState, useMemo } from 'react';
+
 import { useBooks } from '../../contexts/BooksContext';
 
 interface BooksModalProps {
@@ -9,44 +8,34 @@ interface BooksModalProps {
 }
 
 export function BooksModal({ onClose, onSelectBook }: BooksModalProps) {
-  const { authorsMap, genres, genresMap } = useBooks();
-  const [books, setBooks] = useState<BookMetadata[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { books: allBooks, authorsMap, genres, genresMap, loading } = useBooks();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGenre, setSelectedGenre] = useState<number | null>(null);
 
-  useEffect(() => {
-    loadBooks();
-  }, [selectedGenre]);
+  // Filter books by genre and search term
+  const filteredBooks = useMemo(() => {
+    let result = allBooks;
 
-  async function loadBooks() {
-    setLoading(true);
-    try {
-      const result = await listBooks(
-        selectedGenre ?? undefined,
-        undefined,
-        undefined,
-        100,
-        0
-      );
-      setBooks(result);
-    } catch (err) {
-      console.error('Failed to load books:', err);
-    } finally {
-      setLoading(false);
+    // Filter by genre
+    if (selectedGenre !== null) {
+      result = result.filter((book) => book.genre_id === selectedGenre);
     }
-  }
 
-  // Filter books by search term
-  const filteredBooks = books.filter((book) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    const authorName = book.author_id !== undefined ? authorsMap.get(book.author_id) : undefined;
-    return (
-      book.title.toLowerCase().includes(term) ||
-      (authorName && authorName.toLowerCase().includes(term))
-    );
-  });
+    // Filter by search term
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter((book) => {
+        const authorName = book.author_id !== undefined ? authorsMap.get(book.author_id) : undefined;
+        return (
+          book.title.toLowerCase().includes(term) ||
+          (authorName && authorName.toLowerCase().includes(term))
+        );
+      });
+    }
+
+    // Limit to 100
+    return result.slice(0, 100);
+  }, [allBooks, selectedGenre, searchTerm, authorsMap]);
 
   return (
     <div

@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import type { TargetPlatform } from '../types';
-import { isWebTarget } from '../utils/storage';
 
 export interface QueuedModal {
   id: string;
@@ -47,11 +46,9 @@ export function ModalQueueProvider({ children }: ModalQueueProviderProps) {
         return prev;
       }
 
-      // Check platform targeting
-      const isWeb = isWebTarget;
-      if (modal.target !== 'all') {
-        if (isWeb && modal.target !== 'web') return prev;
-        if (!isWeb && modal.target !== 'desktop') return prev;
+      // Check platform targeting - web only
+      if (modal.target !== 'all' && modal.target !== 'web') {
+        return prev;
       }
 
       // Add to queue and sort by priority (lower priority number = higher precedence)

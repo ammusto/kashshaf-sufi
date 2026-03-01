@@ -2,12 +2,11 @@
  * Announcements Utility
  *
  * Handles fetching, caching, and filtering announcements from CDN.
- * Desktop apps use Tauri/reqwest (no CORS), web uses browser fetch.
+ * Uses browser fetch for web target.
  */
 
 import type { Announcement, AnnouncementsManifest } from '../types';
 import {
-  isWebTarget,
   getAnnouncementsCache,
   setAnnouncementsCache,
   getDismissedAnnouncements,
@@ -20,10 +19,10 @@ const SUPPORTED_SCHEMA_VERSION = 1;
 const FETCH_TIMEOUT_MS = 5000; // 5 seconds
 
 /**
- * Fetch announcements via browser fetch (for web target)
+ * Fetch announcements via browser fetch
  * Returns null on failure (network error, timeout, invalid response)
  */
-async function fetchAnnouncementsWeb(): Promise<AnnouncementsManifest | null> {
+async function fetchAnnouncementsFromCDN(): Promise<AnnouncementsManifest | null> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -63,56 +62,6 @@ async function fetchAnnouncementsWeb(): Promise<AnnouncementsManifest | null> {
       console.warn('Failed to fetch announcements:', err);
     }
     return null;
-  }
-}
-
-/**
- * Fetch announcements via Tauri/reqwest (for desktop targets)
- * Returns null on failure
- */
-async function fetchAnnouncementsDesktop(): Promise<AnnouncementsManifest | null> {
-  try {
-    const { fetchAnnouncements } = await import('../api/tauri');
-    const manifest = await fetchAnnouncements();
-
-    // Transform Tauri response: rename announcement_type -> type
-    const transformedAnnouncements: Announcement[] = manifest.announcements.map(ann => ({
-      id: ann.id,
-      title: ann.title,
-      body: ann.body,
-      body_format: ann.body_format as Announcement['body_format'],
-      type: ann.announcement_type as Announcement['type'],
-      priority: ann.priority as Announcement['priority'],
-      target: ann.target as Announcement['target'],
-      min_app_version: ann.min_app_version,
-      max_app_version: ann.max_app_version,
-      starts_at: ann.starts_at,
-      expires_at: ann.expires_at,
-      dismissible: ann.dismissible,
-      show_once: ann.show_once,
-      action: ann.action,
-    }));
-
-    return {
-      schema_version: manifest.schema_version,
-      announcements: transformedAnnouncements,
-    };
-  } catch (err) {
-    console.warn('Failed to fetch announcements via Tauri:', err);
-    return null;
-  }
-}
-
-/**
- * Fetch announcements from CDN
- * Uses Tauri/reqwest for desktop (no CORS), browser fetch for web
- * Returns null on failure (network error, timeout, invalid response)
- */
-export async function fetchAnnouncementsFromCDN(): Promise<AnnouncementsManifest | null> {
-  if (isWebTarget) {
-    return fetchAnnouncementsWeb();
-  } else {
-    return fetchAnnouncementsDesktop();
   }
 }
 
@@ -226,10 +175,9 @@ async function isAnnouncementDismissed(id: string): Promise<boolean> {
 /**
  * Get eligible announcements based on platform, date, version, and dismissal status
  */
-export async function getEligibleAnnouncements(appVersion: string): Promise<Announcement[]> {
+export async function getEligibleAnnouncements(_appVersion?: string): Promise<Announcement[]> {
   const announcements = await getAnnouncementsWithCache();
   const now = new Date();
-  const isWeb = isWebTarget;
 
   // Get user preference for skipping normal announcements
   const skipNormalAnnouncements = await getSkipAnnouncementPopups();
@@ -237,11 +185,8 @@ export async function getEligibleAnnouncements(appVersion: string): Promise<Anno
   const eligibleAnnouncements: Announcement[] = [];
 
   for (const announcement of announcements) {
-    // Check platform targeting
-    if (announcement.target !== 'all') {
-      if (isWeb && announcement.target !== 'web') continue;
-      if (!isWeb && announcement.target !== 'desktop') continue;
-    }
+    // Check platform targeting - web target only sees 'all' and 'web'
+    if (announcement.target !== 'all' && announcement.target !== 'web') continue;
 
     // Check date range
     const startsAt = new Date(announcement.starts_at);
@@ -250,13 +195,6 @@ export async function getEligibleAnnouncements(appVersion: string): Promise<Anno
     if (announcement.expires_at) {
       const expiresAt = new Date(announcement.expires_at);
       if (now > expiresAt) continue; // Expired
-    }
-
-    // Check version range (skip for web target)
-    if (!isWeb) {
-      if (!isWithinVersionRange(appVersion, announcement.min_app_version, announcement.max_app_version)) {
-        continue;
-      }
     }
 
     // Check dismissal status based on priority
